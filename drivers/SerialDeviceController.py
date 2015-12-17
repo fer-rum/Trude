@@ -1,14 +1,8 @@
 __author__ = 'Fredo Erxleben'
 
-
+from drivers import Command
 from drivers import SerialDevice
 from drivers import CommunicationMode
-
-from threading import Thread
-from threading import Lock
-from threading import Event
-
-# TODO enable the abstraction of commands and the issuing of such
 
 
 class SerialDeviceController(object):
@@ -18,74 +12,22 @@ class SerialDeviceController(object):
         assert device.is_connected
         self._device = device
         self._communication_mode = mode
-        self._read_thread = Thread(name="Reader", target=self._read())
-        self._write_thread = Thread(name="Writer", target=self._write())
-        self._terminate_reader = Event()
-        self._terminate_writer = Event()
 
-        # If the communication mode forbids contemporary reading and writing,
-        # a lock will be needed
-        if mode.rw_exclusive:
-            self._io_lock = Lock()
+        if not mode.rw_exclusive:
+            raise NotImplementedError("Only rw exclusive communication is currently supported.")
 
     @property
     def device(self):
         return self._device
 
-    # TODO implement proper error handling
-
-    def _start_reader(self):
-        if not self._read_thread.is_alive():
-            self._read_thread.start()
-
-    def _stop_reader(self):
-        if self._read_thread.is_alive():
-            self._terminate_reader.set()
-            self._read_thread.join()
-            self._terminate_reader.clear()
-
-    def _start_writer(self):
-        if not self._write_thread.is_alive():
-            self._write_thread.start()
-
-    def _stop_writer(self):
-        if self._write_thread.is_alive():
-            self._terminate_writer.set()
-            self._write_thread.join()
-            self._terminate_writer.clear()
-
-    def _read(self):
+    def issue_command(self, command: Command):
         """
-        Attempts repeatedly to read a line from the device and hand it over to the parsing function.
-        If the communication mode is read-write exclusive, a lock will be acquired beforehand
-        and be released immediately after reading.
-        The read line then will be passed into the parse_read_line function for further handling.
+        Issues a given command to the device.
+        If the command expects a reply, it is read and given to the commands reply handling method.
+        :param command: The object that represents the command that has to be issued.
         :return:
         """
-
-        while not self._terminate_reader.is_set():
-
-            if self._communication_mode.rw_exclusive:
-                self._io_lock.acquire()  # caution: blocking!
-
-            line = self._device.read_string()
-
-            if self._communication_mode.rw_exclusive:
-                self._io_lock.release()
-
-            self.parse_read_line(line)
-
-    def _write(self):
-        # TODO implement
-        pass
-
-    def parse_read_line(self, incoming: str):
-        """
-        This method is supposed to be overridden by inheriting children.
-        :param incoming:
-        :return:
-        """
-        pass
-
-
-
+        self._device.write_string(str(command))
+        if command.expects_reply:
+            reply = self._device.read_string()
+            command.handle_reply(reply)
