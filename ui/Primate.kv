@@ -1,0 +1,27 @@
+#: kivy 1.8
+
+GridLayout:
+    rows: 2
+
+    TabbedPanel:
+        do_default_tab: False
+        size_hint: (1, 0.9)
+        tab_width: 150
+
+        TabbedPanelItem:
+            text: 'Isel IMC4'
+
+        TabbedPanelItem:
+            text: 'Vermes Heater 0'
+
+        TabbedPanelItem:
+            text: 'Vermes Heater 1'
+
+    GridLayout:
+        rows: 1
+        size_hint: (1, 0.1)
+
+        Button:
+            text: 'foo'
+        Button:
+            text: 'bar'
